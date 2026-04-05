@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>✓∆\ LLM</title>
+    <link rel="shortcut icon" href="vAI.ico" type="image/x-icon">
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js" defer></script>
+    
+    <!-- Local files -->
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js" defer></script>
+    <script src="ui.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+
+    <!-- ==================== LOADER OVERLAY ==================== -->
+    <div id="ai-loader-overlay" class="loader-overlay" style="display:none;">
+        <div class="loader-ripple"></div>
+        <h2 id="loader-status-text" class="loader-title">Loading model...</h2>
+        <div class="loader-bar-container">
+            <div id="loader-progress" class="loader-bar"></div>
+        </div>
+        <p class="loader-subtitle">Loading weights into video memory</p>
+    </div>
+
+    <!-- ==================== WELCOME PANEL ==================== -->
+    <div id="welcome-panel">
+        <h2>Glad to see you!</h2>
+        <p>Choose a model and let's start chatting</p>
+    </div>
+
+    <!-- ==================== MODEL WARNING PANEL ==================== -->
+    <div id="model-warning-panel">
+        <div class="warning-icon">⚠️</div>
+        <h3>Version discrepancy</h3>
+        <p style="font-size: 14px; opacity: 0.6; margin-bottom: 25px;">This chat was started in a different version of Vi. To continue, please return to the original model or start a new chat.</p>
+        <button class="warning-btn" onclick="UI.closeWarning()">Понятно</button>
+    </div>
+
+    <!-- ==================== CONFIRM ACTION PANEL ==================== -->
+    <div id="confirm-action-panel">
+        <div class="warning-icon" id="confirm-icon">🗑️</div>
+        <h3 id="confirm-title">Confirmation</h3>
+        <p id="confirm-text" style="font-size: 14px; opacity: 0.6; margin-bottom: 25px;"></p>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <button id="action-confirm-btn" class="warning-btn">Confirm</button>
+            <button class="warning-btn" style="background: rgba(255,255,255,0.1); box-shadow: none;" onclick="closeConfirmPanel()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ==================== FILE SUCCESS PANEL ==================== -->
+    <div id="file-success-panel">
+        <div id="preview-container" style="margin-bottom: 15px; display: flex; justify-content: center;"></div>
+        <h3 id="file-status-title" style="margin: 10px 0 5px;">The file is ready</h3>
+        <p id="file-status-name" style="font-size: 13px; opacity: 0.6; margin-bottom: 20px; word-break: break-all;"></p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="warning-btn" style="background: linear-gradient(135deg, #34c759, #248a3d); box-shadow: 0 8px 20px rgba(52, 199, 89, 0.2);" onclick="closeFileStatus()">
+                Great
+            </button>
+            <button class="warning-btn" style="background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); color: #ff3b30; box-shadow: none;" onclick="removeAttachedFile()">
+                Delete file
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== MODALS & OVERLAYS ==================== -->
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="delete-modal">
+            <h3 style="margin:0; color:white">Delete chat?</h3>
+            <p style="font-size:14px; color:rgba(255,255,255,0.5); margin: 15px 0 20px;">This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="UI.closeDeleteModal()">Cancel</button>
+                <button class="btn-confirm" id="confirm-del">Delete</button>
+            </div>
+        </div>
+    </div>
+<div class="modal-overlay" id="info-modal">
+    <div class="modal">
+        <div class="warning-icon">ℹ️</div>
+        <h3 style="margin:0; color:white">About chat</h3>
+        <p style="font-size:14px; color:rgba(255,255,255,0.6); margin: 15px 0 20px;">
+            This dialogue was conducted using:
+            <span id="info-model-full-name" class="info-model-name">The model is not defined</span>
+        </p>
+        <button class="btn-confirm" onclick="UI.closeInfoModal()" style="width:100%">OK</button>
+    </div>
+</div>
+    <!-- ==================== SIDEBAR ==================== -->
+    <div class="sidebar" id="sidebar">
+        <button class="sidebar-btn" onclick="createNewChat()">+ New chat</button>
+        <button class="sidebar-btn" style="background: var(--accent-blue); margin-top: 0;" onclick="exportMemory()">💾 Memory Export</button>
+        <button class="sidebar-btn" style="background: #ff4757; margin-top: 10px;" onclick="clearCurrentChat()">🗑️ Clear current chat</button>
+        <button class="sidebar-btn" style="background: #2f3542; margin-top: 5px; font-size: 10px; opacity: 0.7;" onclick="resetEverything()">⚠️ Reset all memory</button>
+        <div class="history-list" id="history-list"></div>
+    </div>
+
+    <!-- ==================== BACKGROUND EFFECTS ==================== -->
+    <div class="aurora-container">
+    <div class="aurora-blob purple"></div>
+    <div class="aurora-blob blue"></div>
+    <div class="aurora-blob pink"></div>
+    </div>
+
+    <!-- ==================== HEADER ==================== -->
+    <header>
+        <div style="display: flex; width: 100%; justify-content: space-between; align-items: center; position: relative;">
+            
+            <!-- Sidebar toggle -->
+            <button onclick="UI.toggleSidebar()" style="background:none; border:none; cursor:pointer; padding:5px; z-index: 11;" aria-label="Меню">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
+
+            <!-- Title (centered) -->
+            <h1 id="vAI-title" style="position: absolute; left: 50%; transform: translateX(-50%); margin: 0; white-space: nowrap;">vAI</h1>
+
+            <!-- Model Dropdown -->
+            <div class="model-dropdown" id="model-dropdown">
+                <div class="dropdown-selected" onclick="toggleDropdown()" aria-label="Выбрать модель">
+                    <span id="selected-icon"></span>
+                    <span id="selected-label"></span>
+                </div>
+                <div class="dropdown-list" id="model-dropdown-list">
+                </div>
+            </div>
+        </div>
+
+        <!-- Context / Memory Status -->
+        <div class="context-status">
+            <div class="status-text-row">
+                <span>MEMORY: <span id="ctx-val">0</span> / <span id="ctx-max">65536</span></span>
+            </div>
+            <div class="memory-progress-container">
+                <div id="memory-bar"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== CHAT AREA ==================== -->
+    <main id="chat-flow"></main>
+
+    <!-- ==================== INPUT DOCK ==================== -->
+    <div class="dock">
+        <input type="file" id="file-input" style="display:none" accept="image/*,application/pdf">
+        
+        <!-- 1. Attach button -->
+        <button id="attach-btn-main" class="attach-btn" onclick="document.getElementById('file-input').click();" aria-label="Attach file">
+            <span class="attach-icon-paperclip">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                </svg>
+            </span>
+            <span class="attach-icon-search">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </span>
+        </button>
+
+        <!-- 2. Input field -->
+        <textarea id="user-input" class="input-glass" 
+          placeholder="Message for Vi..." 
+          rows="1" inputmode="text" 
+          spellcheck="false" autocomplete="off"></textarea>
+        
+        <!-- 3. Send button -->
+        <button class="send-btn" onclick="talk()" aria-label="Send message">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+        </button>
+    </div>
+
+</body>
+</html>
